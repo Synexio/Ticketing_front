@@ -1,7 +1,58 @@
+'use client';
 import Image from 'next/image'
 import Link from "next/link";
+import {Web3Button} from "@web3modal/react";
+import {useAccount, useDisconnect, useContractWrite} from "wagmi";
+import {parseGwei} from "viem";
+import {readContract, writeContract} from "@wagmi/core";
+import {useEffect, useState} from "react";
+
+
 
 export default function Home() {
+
+    const [availableTickets, setAvailableTickets] = useState<any>('');
+    const [ticketPrice, setTicketPrice] = useState<any>('');
+
+    useEffect(() => {
+        // @ts-ignore
+        readContract({
+            address: contractAddress,
+            abi: contractABI,
+            functionName: 'getAvailableTickets'
+        }).then((res: any) => {
+            const newR = Number(res);
+            setAvailableTickets(newR);
+        })
+
+        // @ts-ignore
+        readContract({
+            address: contractAddress,
+            abi: contractABI,
+            functionName: 'getTicketPrice'
+        }).then((res: any) => {
+            const newR = Number(res);
+            setTicketPrice(newR);
+        })
+    }, [availableTickets, ticketPrice])
+
+    const { address, connector, isConnected } = useAccount();
+    const { disconnect } = useDisconnect();
+
+    const contract = require("./contract/Ticketing.json");
+    const contractABI = contract.abi;
+    const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+
+    async function mint() {
+        // @ts-ignore
+        const {hash} = await writeContract({
+            address: contractAddress,
+            abi: contractABI,
+            functionName: 'mint',
+            value: parseGwei('1'),
+        });
+    }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between pt-24 pb-6">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
@@ -20,23 +71,34 @@ export default function Home() {
       </div>
 
 
-      <div className="mb-64 grid text-center">
+      <div className="mb-64 mt-24 grid text-center">
           <h2 className={`mb-3 text-xl font-semibold`}>
             Nombre de tickets disponibles
           </h2>
           <p className={`mb-6 text-sm opacity-80`}>
-            X
+              {availableTickets}
           </p>
-
           <h2 className={`mb-3 text-xl font-semibold`}>
             Prix du ticket
           </h2>
           <p className={`mb-6 text-sm opacity-80`}>
-            X MATIC
+              {ticketPrice} MATIC
           </p>
 
-          <button className="btn btn-neutral my-6">Acheter un ticket</button>
-          <Link href="/ticket" className="btn btn-neutral">Utiliser un ticket</Link>
+          {
+              isConnected &&
+              <div>
+                  <button className="btn btn-neutral my-6 mr-4" onClick={async () => {await mint();}}>Acheter un ticket</button>
+                  <Link href="/ticket" className="btn btn-neutral mr-4">Utiliser un ticket</Link>
+                  <button className="btn btn-neutral mt-6" onClick={disconnect}>Se déconnecter</button>
+              </div>
+          }
+          {
+              !isConnected &&
+              <Web3Button />
+          }
+
+
       </div>
 
         <p className="text-sm opacity-60">Created by Alexandre Hannagan</p>
